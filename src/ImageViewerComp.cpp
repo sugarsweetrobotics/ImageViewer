@@ -14,6 +14,8 @@
 #include "ImageViewer.h"
 
 
+static ImageViewer *pView;
+
 void MyModuleInit(RTC::Manager* manager)
 {
   ImageViewerInit(manager);
@@ -28,6 +30,7 @@ void MyModuleInit(RTC::Manager* manager)
     abort();
   }
 
+  pView = dynamic_cast<ImageViewer*>(comp);
   // Example
   // The following procedure is examples how handle RT-Components.
   // These should not be in this function.
@@ -88,10 +91,24 @@ int main (int argc, char** argv)
 
   // run the manager in blocking mode
   // runManager(false) is the default.
-  manager->runManager();
+  manager->runManager(true);
 
+  while(!pView);
+
+  cv::namedWindow("Image Window", CV_WINDOW_AUTOSIZE);
+
+  while(pView->isAlive()) {
+    std::cout << "Show Image" << std::endl;
+    if (pView->imageQueue.size() > 0) {
+      cv::Mat image = pView->imageQueue.front();
+      pView->imageQueue.pop();
+      imshow("Image Window", image);
+      int c = cvWaitKey(1);
+    }
+
+  }
   // If you want to run the manager in non-blocking mode, do like this
   // manager->runManager(true);
-
+  cv::destroyWindow("Image Window");
   return 0;
 }

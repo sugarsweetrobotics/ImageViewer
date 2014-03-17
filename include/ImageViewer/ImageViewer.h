@@ -10,14 +10,16 @@
 #ifndef IMAGEVIEWER_H
 #define IMAGEVIEWER_H
 
+
+#include <rtm/idl/BasicDataTypeSkel.h>
+#include <rtm/idl/ExtendedDataTypesSkel.h>
+#include <rtm/idl/InterfaceDataTypesSkel.h>
+#include "ImgStub.h"
 #include <rtm/Manager.h>
 #include <rtm/DataFlowComponentBase.h>
 #include <rtm/CorbaPort.h>
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
-#include <rtm/idl/BasicDataTypeSkel.h>
-#include <rtm/idl/ExtendedDataTypesSkel.h>
-#include <rtm/idl/InterfaceDataTypesSkel.h>
 
 // Service implementation headers
 // <rtc-template block="service_impl_h">
@@ -32,7 +34,7 @@
 
 //Include File for OpenCV functions
 #include <opencv2/opencv.hpp>
-
+#include <queue>
 using namespace RTC;
 using namespace Img;
 
@@ -84,7 +86,7 @@ class ImageViewer
    * 
    * 
    */
-  // virtual RTC::ReturnCode_t onFinalize();
+   virtual RTC::ReturnCode_t onFinalize();
 
   /***
    *
@@ -282,9 +284,15 @@ class ImageViewer
   
   // </rtc-template>
   int		width, height, channels, saved_image_counter;
-  cv::Mat	image;
-  bool		*connection_check;
 
+  bool		*connection_check;
+  bool m_alive;
+ public:
+  std::queue<cv::Mat> imageQueue;
+  cv::Mat	image;
+
+
+  bool isAlive() {return m_alive;}
 };
 
 

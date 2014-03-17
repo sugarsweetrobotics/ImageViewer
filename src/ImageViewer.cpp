@@ -79,16 +79,17 @@ RTC::ReturnCode_t ImageViewer::onInitialize()
   // Bind variables and configuration variable
   bindParameter("capture_frame_num", m_capture_frame_num, "0");
   // </rtc-template>
-  
+  m_alive = true;
   return RTC::RTC_OK;
 }
 
-/*
+
 RTC::ReturnCode_t ImageViewer::onFinalize()
 {
+  m_alive = false;
   return RTC::RTC_OK;
 }
-*/
+
 
 /*
 RTC::ReturnCode_t ImageViewer::onStartup(RTC::UniqueId ec_id)
@@ -153,7 +154,7 @@ RTC::ReturnCode_t ImageViewer::onActivated(RTC::UniqueId ec_id)
 	  }
   }
 
-  cv::namedWindow("Image Window", CV_WINDOW_AUTOSIZE);
+
   std::cout << "Start image view" << std::endl;
   std::cout << "If you want to take a 1 shot image as image file, please push s on Captured Image Window!" << std::endl;
 
@@ -177,7 +178,7 @@ RTC::ReturnCode_t ImageViewer::onDeactivated(RTC::UniqueId ec_id)
 	delete [] connection_check;
   
   //描画ウィンドウの消去
-  cv::destroyWindow("Image Window");
+
   std::cout << "Stop image view" << std::endl;
 
   //描画用画像メモリの解放
@@ -187,78 +188,72 @@ RTC::ReturnCode_t ImageViewer::onDeactivated(RTC::UniqueId ec_id)
 }
 
 
-RTC::ReturnCode_t ImageViewer::onExecute(RTC::UniqueId ec_id)
-{
-	//Inport data check
-	if(m_ImageIn.isNew())
-	{
-		m_ImageIn.read();
-    		
-		width = m_Image.data.image.width;
-		height = m_Image.data.image.height;
-		channels = (m_Image.data.image.format == Img::CF_GRAY) ? 1 :
-			   (m_Image.data.image.format == Img::CF_RGB || m_Image.data.image.format == Img::CF_PNG || m_Image.data.image.format == Img::CF_JPEG) ? 3 :
-			   (m_Image.data.image.raw_data.length()/width/height);
-		RTC_TRACE(("Capture image size %d x %d", width, height));
-		RTC_TRACE(("Channels %d", channels));
-		
-		if(channels == 3)
-			image.create(height, width, CV_8UC3);
-		else
-			image.create(height, width, CV_8UC1);		
-
-		long data_length = m_Image.data.image.raw_data.length();
-		long image_size = width * height * channels;
-
-		std::cout<<"ColorFormat"<<m_Image.data.image.format<<std::endl;
-		if( m_Image.data.image.format == Img::CF_RGB )
-		{
-			for(int i=0; i<height; ++i)
-				memcpy(&image.data[i*image.step],&m_Image.data.image.raw_data[i*width*channels],sizeof(unsigned char)*width*channels);
-			if(channels == 3)
-				cv::cvtColor(image, image, CV_RGB2BGR);
-		}
-		else if( m_Image.data.image.format == Img::CF_JPEG || m_Image.data.image.format == Img::CF_PNG )
-		{
-			std::vector<uchar> compressed_image = std::vector<uchar>(data_length);
-			memcpy(&compressed_image[0], &m_Image.data.image.raw_data[0], sizeof(unsigned char) * data_length);
-
-			//Decode received compressed image
-			cv::Mat decoded_image;
-			if(channels == 3)
-			{
-				decoded_image = cv::imdecode(cv::Mat(compressed_image), CV_LOAD_IMAGE_COLOR);
-				cv::cvtColor(decoded_image, image, CV_RGB2BGR);
-			}
-			else
-			{
-				decoded_image = cv::imdecode(cv::Mat(compressed_image), CV_LOAD_IMAGE_GRAYSCALE);
-				image = decoded_image;
-			}
-		}
+RTC::ReturnCode_t ImageViewer::onExecute(RTC::UniqueId ec_id) {
+  //Inport data check
+  if(m_ImageIn.isNew()) {
+    m_ImageIn.read();
+    
+    width = m_Image.data.image.width;
+    height = m_Image.data.image.height;
+    channels = (m_Image.data.image.format == Img::CF_GRAY) ? 1 :
+      (m_Image.data.image.format == Img::CF_RGB || m_Image.data.image.format == Img::CF_PNG || m_Image.data.image.format == Img::CF_JPEG) ? 3 :
+      (m_Image.data.image.raw_data.length()/width/height);
+    RTC_TRACE(("Capture image size %d x %d", width, height));
+    RTC_TRACE(("Channels %d", channels));
+    
+    if(channels == 3)
+      image.create(height, width, CV_8UC3);
+    else
+      image.create(height, width, CV_8UC1);		
+    
+    long data_length = m_Image.data.image.raw_data.length();
+    long image_size = width * height * channels;
+    
+    std::cout<<"ColorFormat"<<m_Image.data.image.format<<std::endl;
+    if( m_Image.data.image.format == Img::CF_RGB ) {
+      for(int i=0; i<height; ++i)
+	memcpy(&image.data[i*image.step],&m_Image.data.image.raw_data[i*width*channels],sizeof(unsigned char)*width*channels);
+      if(channels == 3)
+	cv::cvtColor(image, image, CV_RGB2BGR);
+    }
+    else if( m_Image.data.image.format == Img::CF_JPEG || m_Image.data.image.format == Img::CF_PNG ) {
+      std::vector<uchar> compressed_image = std::vector<uchar>(data_length);
+      memcpy(&compressed_image[0], &m_Image.data.image.raw_data[0], sizeof(unsigned char) * data_length);
+      
+      //Decode received compressed image
+      cv::Mat decoded_image;
+      if(channels == 3) {
+	decoded_image = cv::imdecode(cv::Mat(compressed_image), CV_LOAD_IMAGE_COLOR);
+	cv::cvtColor(decoded_image, image, CV_RGB2BGR);
+      }
+      else {
+	decoded_image = cv::imdecode(cv::Mat(compressed_image), CV_LOAD_IMAGE_GRAYSCALE);
+	image = decoded_image;
+      }
+    }
   }
-
+  
   //画像データが入っている場合は画像を表示
-  if(!image.empty())
-  {
-/*
-	  //Communication Time
-		coil::TimeValue tm(coil::gettimeofday());
-		std::cout<< "Communication Time: " << tm.usec() - (m_Image.tm.nsec / 1000) << "\r";
-		*/
-		cv::imshow("Image Window", image);
+  if(!image.empty()) {
+
+    //Communication Time
+    coil::TimeValue tm(coil::gettimeofday());
+    std::cout<< "Communication Time: " << tm.usec() - (m_Image.tm.nsec / 1000) << "\r";
+    imageQueue.push( image );
+    //cv::imshow("Image Window", image);
   }
-
-  char key = cv::waitKey(3);
-
+  
+  //char key = cv::waitKey(3);
+  
   //Image save process
-  if ( key == 's')
-  {
+  /**
+  if ( key == 's') {
     char file[80];
     sprintf( file, "CapturedImage%03d.png",++saved_image_counter);
     cv::imwrite( file, image );
   }
-
+  **/
+  
   return RTC::RTC_OK;
 }
 
