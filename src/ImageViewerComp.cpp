@@ -98,7 +98,7 @@ int main (int argc, char** argv)
   cv::namedWindow("Image Window", CV_WINDOW_AUTOSIZE);
 
   while(pView->isAlive()) {
-    std::cout << "Show Image" << std::endl;
+    //std::cout << "Show Image" << std::endl;
     if (pView->imageQueue.size() > 0) {
       cv::Mat image = pView->imageQueue.front();
       pView->imageQueue.pop();
